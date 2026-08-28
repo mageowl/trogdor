@@ -25,5 +25,5 @@ mod error_handler;
 pub(crate) mod source;
 pub mod span;
 
-pub use error_handler::ErrorHandler;
+pub use error_handler::{ErrorHandler, SourceId};
 pub use span::Span;

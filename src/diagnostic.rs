@@ -177,7 +177,7 @@ impl Message {
         } = source.get_ch_data(span.end);
 
         // If either the span extends beyond the source code
-        if (span.end >= source.code.len()
+        if (span.end > source.code.len()
             // And it only selects one line
             && (ln_start + 1 == ln_end || ln_start == ln_end))
             // Or the span selects exclusively a newline character

@@ -1,4 +1,7 @@
-use std::fmt::{self, Display};
+use std::{
+    cell::OnceCell,
+    fmt::{self, Display},
+};
 
 use crate::{
     diagnostic::Diagnostic,
@@ -54,7 +57,12 @@ impl<'a> ErrorHandler<'a> {
         };
 
         let span_offset = self.total_len;
-        self.sources.push(Source::new(label, code, span_offset));
+        self.sources.push(Source {
+            code: code,
+            span_offset: span_offset,
+            label: label,
+            lines: OnceCell::new(),
+        });
         self.total_len = match self.total_len.checked_add(len) {
             Some(v) => v,
             None => {
@@ -183,6 +191,20 @@ mod test {
     use expect_test::{Expect, expect};
     use regex::Regex;
 
+    #[test]
+    fn source_offsets() {
+        let mut eh = ErrorHandler::new();
+        let source1 = eh.add_source("<source1>", "abc");
+        let source2 = eh.add_source("<source2>", "def");
+        assert_eq!(eh.total_len, 6);
+        let span1 = Span::new(0..3, source1);
+        assert_eq!(span1.start, 0);
+        assert_eq!(span1.end, 3);
+        let span2 = Span::new(0..3, source2);
+        assert_eq!(span2.start, 3);
+        assert_eq!(span2.end, 6);
+    }
+
     fn test_output(
         source: &str,
         expected: Expect,
@@ -227,6 +249,29 @@ mod test {
     #[test]
     fn help_messages() {
         test_output(SOURCE, EXPECTED, |eh, source| {
+            let span = Span::new(0..3, source);
+            eh.warn("i dont like let keywords", span)
+                .help_generic("try a different keyword")
+                .help("found here", span);
+        });
+        const EXPECTED: Expect = expect![["
+            warning: i dont like let keywords
+              --> <test>:1:1
+               |
+             1 | let random_number = 185
+               |
+               = help: try a different keyword
+               = help: found here
+                   --> <test>:1:1
+                    |
+                  1 | let random_number = 185
+                    |
+        "]];
+    }
+
+    #[test]
+    fn end_of_file() {
+        test_output(SOURCE, EXPECTED, |eh, source| {
             eh.err("unexpected end of file", Span::new(43..44, source));
         });
         const EXPECTED: Expect = expect![["
@@ -237,7 +282,4 @@ mod test {
                |
         "]];
     }
-
-    #[test]
-    fn end_of_file() {}
 }

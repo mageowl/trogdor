@@ -6,31 +6,19 @@ pub struct Source<'a> {
     pub(crate) span_offset: u32,
     pub(crate) code: &'a str,
     pub(crate) label: &'a str,
-    lines: OnceCell<Vec<RawSpan>>,
+    pub(crate) lines: OnceCell<Vec<RawSpan>>,
 }
 
 impl<'a> Source<'a> {
-    pub(crate) fn new(label: &'a str, code: &'a str, span_offset: u32) -> Self {
-        Self {
-            code,
-            span_offset,
-            label,
-            lines: OnceCell::new(),
-        }
-    }
-
     pub(crate) fn lines(&self) -> &Vec<RawSpan> {
-        self.lines
-            .get_or_init(|| Self::gen_lines(self.span_offset as usize, self.code))
+        self.lines.get_or_init(|| Self::gen_lines(self.code))
     }
 
-    fn gen_lines(span_offset: usize, code: &'a str) -> Vec<RawSpan> {
+    fn gen_lines(code: &'a str) -> Vec<RawSpan> {
         let mut lines = Vec::new();
         let mut ch = 0;
         for line in code.lines() {
-            lines.push(RawSpan::from(
-                span_offset + ch..span_offset + ch + line.len(),
-            ));
+            lines.push(RawSpan::from(ch..ch + line.len()));
             // +1 for newline character
             ch += line.len() + 1;
         }
@@ -74,8 +62,53 @@ impl<'a> Source<'a> {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub(crate) struct ChData {
     pub(crate) ln: usize,
     pub(crate) col: usize,
     pub(crate) line_span: RawSpan,
+}
+
+#[cfg(test)]
+mod test {
+    use std::cell::OnceCell;
+
+    use crate::{
+        source::{ChData, Source},
+        span::RawSpan,
+    };
+
+    #[test]
+    fn ch_data() {
+        let source = Source {
+            code: "line 1\nline 2\nline 3",
+            span_offset: 1,
+            label: "<test>",
+            lines: OnceCell::new(),
+        };
+        assert_eq!(
+            source.get_ch_data(3),
+            ChData {
+                ln: 1,
+                col: 4,
+                line_span: RawSpan::from(0..6)
+            }
+        );
+        assert_eq!(
+            source.get_ch_data(12),
+            ChData {
+                ln: 2,
+                col: 6,
+                line_span: RawSpan::from(7..13)
+            }
+        );
+        assert_eq!(
+            source.get_ch_data(15),
+            ChData {
+                ln: 3,
+                col: 2,
+                line_span: RawSpan::from(14..20)
+            }
+        );
+    }
 }
