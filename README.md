@@ -1,3 +1,7 @@
+# MOVED TO CODEBERG
+
+this repository has been moved to my codeberg account: https://codeberg.org/mageowl/trogdor
+
 <p align="center"><img src="./assets/hero.png" height=400 alt="trogdor: error handling for programming languages"></p>
 
 Trogdor is a crate for tracking and displaying errors inside a programming language.
